@@ -9,7 +9,7 @@ import type {
 } from '@/types';
 
 // Set this to true to use mock auth (no backend needed)
-const USE_MOCK_AUTH = true;
+const USE_MOCK_AUTH = false;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -105,29 +105,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Create new user
-    const newUser = {
+    const newUser: User = {
       id: 'user-' + Date.now(),
       name: credentials.name.trim(),
       email: credentials.email.toLowerCase().trim(),
-      password: credentials.password,
       course_of_study: credentials.course_of_study || '',
+      role: 'user',
       created_at: new Date().toISOString()
     };
+    const userWithPassword = { ...newUser, password: credentials.password };
 
-    users.push(newUser);
+    users.push(userWithPassword);
     saveMockUsers(users);
 
     // Initialize mock data for the user
     initializeMockUserData(newUser.id);
 
-    const { password, ...userWithoutPassword } = newUser;
     const token = 'mock-jwt-token-' + Date.now();
     
     localStorage.setItem('studyverse_token', token);
-    localStorage.setItem('studyverse_user', JSON.stringify(userWithoutPassword));
+    localStorage.setItem('studyverse_user', JSON.stringify(newUser));
     
     setState({
-      user: userWithoutPassword,
+      user: newUser,
       token,
       isAuthenticated: true,
       isLoading: false

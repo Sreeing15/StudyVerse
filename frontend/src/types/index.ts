@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   course_of_study: string;
+  role?: 'user' | 'admin';
   created_at: string;
   updated_at?: string;
 }

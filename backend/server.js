@@ -56,7 +56,8 @@ app.post('/api/auth/register', async (req, res) => {
         const user = db.create('users', {
             email,
             password: hashedPassword,
-            name
+            name,
+            role: 'user'
         });
 
         const { password: _, ...userWithoutPassword } = user;
@@ -135,6 +136,9 @@ app.post('/api/activities', authenticate, (req, res) => {
     });
     res.status(201).json({ success: true, data: activity });
 });
+
+// Admin routes
+app.use('/api', require('./routes/admin'));
 
 // Start server
 app.listen(PORT, () => {

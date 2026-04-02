@@ -14,7 +14,8 @@ import {
   Sun,
   Moon,
   Menu,
-  X
+  X,
+  ShieldAlert
 } from 'lucide-react';
 
 const Navigation: React.FC = () => {
@@ -36,6 +37,10 @@ const Navigation: React.FC = () => {
     { path: '/schedule', label: 'Schedule', icon: Calendar },
     { path: '/profile', label: 'Profile', icon: User },
   ];
+
+  if (user?.role === 'admin') {
+    navItems.push({ path: '/admin', label: 'Admin', icon: ShieldAlert });
+  }
 
   const isActive = (path: string) => location.pathname === path;
 
