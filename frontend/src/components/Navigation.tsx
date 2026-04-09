@@ -30,16 +30,20 @@ const Navigation: React.FC = () => {
     navigate('/login');
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/summarize', label: 'Summarize', icon: FileText },
-    { path: '/quiz', label: 'Quiz', icon: BookOpen },
-    { path: '/schedule', label: 'Schedule', icon: Calendar },
-    { path: '/profile', label: 'Profile', icon: User },
-  ];
+  let navItems = [];
 
   if (user?.role === 'admin') {
-    navItems.push({ path: '/admin', label: 'Admin', icon: ShieldAlert });
+    navItems = [
+      { path: '/admin', label: 'Admin Dashboard', icon: ShieldAlert },
+    ];
+  } else {
+    navItems = [
+      { path: '/dashboard', label: 'Dashboard', icon: Home },
+      { path: '/summarize', label: 'Summarize', icon: FileText },
+      { path: '/quiz', label: 'Quiz', icon: BookOpen },
+      { path: '/schedule', label: 'Schedule', icon: Calendar },
+      { path: '/profile', label: 'Profile', icon: User },
+    ];
   }
 
   const isActive = (path: string) => location.pathname === path;

@@ -34,7 +34,15 @@ const Login: React.FC = () => {
 
     try {
       await login(formData);
-      navigate('/dashboard');
+      
+      const savedUserStr = localStorage.getItem('studyverse_user');
+      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      
+      if (savedUser && savedUser.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {

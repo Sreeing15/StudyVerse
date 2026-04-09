@@ -4,7 +4,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const db = require('../db/database');
+const User = require('../models/User');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'studyverse-secret-key-change-in-production';
 
@@ -16,7 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'studyverse-secret-key-change-in-pr
 const generateToken = (user) => {
   return jwt.sign(
     { 
-      userId: user.id, 
+      userId: user.id || user._id, 
       email: user.email,
       name: user.name ,
       role:user.role
@@ -105,14 +105,18 @@ const authenticateAdmin = (req, res, next) => {
  * @param {string} userId - User ID
  * @returns {Object|null} - User object or null
  */
-const getCurrentUser = (userId) => {
-  const user = db.findById('users', userId);
-  if (user) {
-    // Remove password from user object
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+const getCurrentUser = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    if (user) {
+      const userObj = user.toJSON();
+      const { password, ...userWithoutPassword } = userObj;
+      return userWithoutPassword;
+    }
+    return null;
+  } catch (err) {
+    return null;
   }
-  return null;
 };
 
 module.exports = {
@@ -120,7 +124,7 @@ module.exports = {
   verifyToken,
   authenticate,
   optionalAuth,
-  authenticateAdmin, // Add this to exports
+  authenticateAdmin,
   getCurrentUser,
   JWT_SECRET
 };

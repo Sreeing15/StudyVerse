@@ -1,136 +1,85 @@
 /**
  * StudyVerse Database Module
- * Uses JSON file-based storage for demo purposes
- * In production, replace with better-sqlite3 or similar
+ * Uses MongoDB via Mongoose
  */
 
+const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 
-const DB_PATH = path.join(__dirname, 'data.json');
+const User = require('../models/User');
+const StudyStreak = require('../models/StudyStreak');
+const ActivityLog = require('../models/ActivityLog');
 
-// Initialize database with default structure
-const initializeDB = () => {
-  const defaultData = {
-    users: [],
-    study_streaks: [],
-    activity_logs: [],
-    summaries: [],
-    quizzes: [],
-    schedules: [],
-    scraped_context: []
-  };
+const autoMigrate = async () => {
+  const dbPath = path.join(__dirname, 'data.json');
+  if (!fs.existsSync(dbPath)) {
+    return; // Migration already complete or not needed
+  }
+
+  console.log('Detected data.json! Auto-migrating data to MongoDB...');
   
-  if (!fs.existsSync(DB_PATH)) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
-  }
-  return defaultData;
-};
-
-// Read database
-const readDB = () => {
   try {
-    if (!fs.existsSync(DB_PATH)) {
-      return initializeDB();
+    const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+
+    if (data.users && data.users.length > 0) {
+      for (const user of data.users) {
+        const existing = await User.findById(user.id);
+        if (!existing) {
+          const newUser = { ...user, _id: user.id };
+          delete newUser.id;
+          await User.create(newUser);
+        }
+      }
+      console.log(`Migrated ${data.users.length} users.`);
     }
-    const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading database:', error);
-    return initializeDB();
+
+    if (data.study_streaks && data.study_streaks.length > 0) {
+      for (const streak of data.study_streaks) {
+        const newStreak = { ...streak, _id: streak.id || streak._id };
+        delete newStreak.id;
+        await StudyStreak.create(newStreak);
+      }
+      console.log(`Migrated ${data.study_streaks.length} study streaks.`);
+    }
+
+    if (data.activity_logs && data.activity_logs.length > 0) {
+      for (const log of data.activity_logs) {
+        const newLog = { ...log, _id: log.id || log._id };
+        delete newLog.id;
+        await ActivityLog.create(newLog);
+      }
+      console.log(`Migrated ${data.activity_logs.length} activity logs.`);
+    }
+
+    // After successful migration, remove the file
+    fs.unlinkSync(dbPath);
+    console.log('data.json successfully migrated and removed!');
+  } catch (err) {
+    console.error('Auto-migration failed!', err);
   }
 };
 
-// Write database
-const writeDB = (data) => {
+const connectDB = async () => {
   try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-    return true;
+    const uri = process.env.MONGODB_URI;
+    
+    if (!uri) {
+      console.error('Error: MONGODB_URI is not defined in your .env file. Please create a MongoDB Atlas cluster and add the URI.');
+      process.exit(1);
+    }
+    
+    const conn = await mongoose.connect(uri);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Automatically migrate data if data.json still exists
+    await autoMigrate();
+    
+    return conn;
   } catch (error) {
-    console.error('Error writing database:', error);
-    return false;
+    console.error(`Error connecting to MongoDB: ${error.message}`);
+    process.exit(1);
   }
 };
 
-// Generic CRUD operations
-const db = {
-  // Create
-  create: (table, data) => {
-    const db = readDB();
-    if (!db[table]) db[table] = [];
-    
-    const newItem = {
-      id: uuidv4(),
-      ...data,
-      created_at: new Date().toISOString()
-    };
-    
-    db[table].push(newItem);
-    writeDB(db);
-    return newItem;
-  },
-
-  // Read all
-  findAll: (table) => {
-    const db = readDB();
-    return db[table] || [];
-  },
-
-  // Find by ID
-  findById: (table, id) => {
-    const db = readDB();
-    return (db[table] || []).find(item => item.id === id);
-  },
-
-  // Find by field
-  findByField: (table, field, value) => {
-    const db = readDB();
-    return (db[table] || []).find(item => item[field] === value);
-  },
-
-  // Find all by field
-  findAllByField: (table, field, value) => {
-    const db = readDB();
-    return (db[table] || []).filter(item => item[field] === value);
-  },
-
-  // Update
-  update: (table, id, data) => {
-    const db = readDB();
-    if (!db[table]) return null;
-    
-    const index = db[table].findIndex(item => item.id === id);
-    if (index === -1) return null;
-    
-    db[table][index] = {
-      ...db[table][index],
-      ...data,
-      updated_at: new Date().toISOString()
-    };
-    
-    writeDB(db);
-    return db[table][index];
-  },
-
-  // Delete
-  delete: (table, id) => {
-    const db = readDB();
-    if (!db[table]) return false;
-    
-    const index = db[table].findIndex(item => item.id === id);
-    if (index === -1) return false;
-    
-    db[table].splice(index, 1);
-    writeDB(db);
-    return true;
-  },
-
-  // Query with filter function
-  query: (table, filterFn) => {
-    const db = readDB();
-    return (db[table] || []).filter(filterFn);
-  }
-};
-
-module.exports = db;
+module.exports = connectDB;

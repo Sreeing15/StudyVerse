@@ -1,6 +1,6 @@
 const express = require('express');
 const { authenticate, authenticateAdmin } = require('../middleware/auth');
-const db = require('../db/database');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -13,21 +13,30 @@ router.get('/admin/dashboard', authenticate, authenticateAdmin, (req, res) => {
 });
 
 router.get('/admin/users', authenticate, authenticateAdmin, async (req, res) => {
-  const users = db.findAll('users'); // Fetch all users from the database
-  // Don't send passwords
-  const safeUsers = users.map(({ password, ...user }) => user);
-  res.json({
-    success: true,
-    users: safeUsers
-  });
+  try {
+    const users = await User.find({});
+    // Don't send passwords
+    const safeUsers = users.map(user => {
+      const userObj = user.toJSON();
+      const { password, ...safeUser } = userObj;
+      return safeUser;
+    });
+    
+    res.json({
+      success: true,
+      users: safeUsers
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 router.delete('/admin/users/:id', authenticate, authenticateAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
-    const success = db.delete('users', userId);
+    const deletedUser = await User.findByIdAndDelete(userId);
     
-    if (!success) {
+    if (!deletedUser) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
     

@@ -54,7 +54,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Public Route Component (redirects to dashboard if authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -65,6 +65,9 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (isAuthenticated) {
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -81,73 +84,73 @@ const AppContent: React.FC = () => {
         <main>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route 
-              path="/login" 
+            <Route
+              path="/login"
               element={
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
-              } 
+              }
             />
-          <Route 
-            path="/register" 
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/summarize" 
-            element={
-              <ProtectedRoute>
-                <Summarize />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/quiz" 
-            element={
-              <ProtectedRoute>
-                <Quiz />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/schedule" 
-            element={
-              <ProtectedRoute>
-                <Schedule />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin" 
-            element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } 
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/summarize"
+              element={
+                <ProtectedRoute>
+                  <Summarize />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz"
+              element={
+                <ProtectedRoute>
+                  <Quiz />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/schedule"
+              element={
+                <ProtectedRoute>
+                  <Schedule />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </div>
     </div>
   );

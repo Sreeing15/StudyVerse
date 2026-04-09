@@ -6,12 +6,20 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const db = require('./db/database');
+const connectDB = require('./db/database');
 const { authenticate, generateToken } = require('./middleware/auth');
 const bcrypt = require('bcryptjs');
 
+// Models
+const User = require('./models/User');
+const StudyStreak = require('./models/StudyStreak');
+const ActivityLog = require('./models/ActivityLog');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors());
@@ -44,7 +52,7 @@ app.post('/api/auth/register', async (req, res) => {
         const { email, password, name } = req.body;
 
         // Check if user exists
-        const existingUser = db.findByField('users', 'email', email);
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ success: false, error: 'User already exists' });
         }
@@ -53,15 +61,18 @@ app.post('/api/auth/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
-        const user = db.create('users', {
+        const user = await User.create({
             email,
             password: hashedPassword,
             name,
             role: 'user'
         });
 
-        const { password: _, ...userWithoutPassword } = user;
-        const token = generateToken(user);
+        // Convert Mongoose document to plain JSON with virtuals applied
+        const userObj = user.toJSON();
+        const { password: _, ...userWithoutPassword } = userObj;
+        
+        const token = generateToken(userObj);
 
         res.status(201).json({
             success: true,
@@ -76,7 +87,7 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = db.findByField('users', 'email', email);
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
@@ -86,8 +97,9 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
-        const { password: _, ...userWithoutPassword } = user;
-        const token = generateToken(user);
+        const userObj = user.toJSON();
+        const { password: _, ...userWithoutPassword } = userObj;
+        const token = generateToken(userObj);
 
         res.json({
             success: true,
@@ -99,42 +111,63 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Protected routes
-app.get('/api/user/profile', authenticate, (req, res) => {
-    const user = db.findById('users', req.user.userId);
-    if (!user) {
-        return res.status(404).json({ success: false, error: 'User not found' });
-    }
+app.get('/api/user/profile', authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
 
-    const { password, ...userWithoutPassword } = user;
-    res.json({ success: true, data: userWithoutPassword });
+        const userObj = user.toJSON();
+        const { password, ...userWithoutPassword } = userObj;
+        res.json({ success: true, data: userWithoutPassword });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // Study streaks
-app.get('/api/streaks', authenticate, (req, res) => {
-    const streaks = db.findAllByField('study_streaks', 'user_id', req.user.userId);
-    res.json({ success: true, data: streaks });
+app.get('/api/streaks', authenticate, async (req, res) => {
+    try {
+        const streaks = await StudyStreak.find({ user_id: req.user.userId });
+        res.json({ success: true, data: streaks });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
-app.post('/api/streaks', authenticate, (req, res) => {
-    const streak = db.create('study_streaks', {
-        user_id: req.user.userId,
-        ...req.body
-    });
-    res.status(201).json({ success: true, data: streak });
+app.post('/api/streaks', authenticate, async (req, res) => {
+    try {
+        const streak = await StudyStreak.create({
+            user_id: req.user.userId,
+            ...req.body
+        });
+        res.status(201).json({ success: true, data: streak });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // Activity logs
-app.get('/api/activities', authenticate, (req, res) => {
-    const activities = db.findAllByField('activity_logs', 'user_id', req.user.userId);
-    res.json({ success: true, data: activities });
+app.get('/api/activities', authenticate, async (req, res) => {
+    try {
+        const activities = await ActivityLog.find({ user_id: req.user.userId });
+        res.json({ success: true, data: activities });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
-app.post('/api/activities', authenticate, (req, res) => {
-    const activity = db.create('activity_logs', {
-        user_id: req.user.userId,
-        ...req.body
-    });
-    res.status(201).json({ success: true, data: activity });
+app.post('/api/activities', authenticate, async (req, res) => {
+    try {
+        const activity = await ActivityLog.create({
+            user_id: req.user.userId,
+            ...req.body
+        });
+        res.status(201).json({ success: true, data: activity });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // Admin routes
